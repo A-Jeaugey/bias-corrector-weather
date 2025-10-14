@@ -5,108 +5,106 @@ from meteostat import Point, Daily
 
 from config import LAT, LON, TIMEZONE, FORECASTS_CSV, OBS_CSV
 
-# URL de l'API Open-Meteo pour les données d'archives ERA5
-ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/era5"
+# URL de l'historique des PRÉVISIONS Open-Meteo (même famille que l'API de prod)
+URL_HISTORIQUE_PREVISIONS = "https://historical-forecast-api.open-meteo.com/v1/forecast"
 
 
-def fetch_era5_daily(lat: float, lon: float, start_date: str, end_date: str, timezone: str) -> pd.DataFrame:
+def recuperer_previsions_historiques_openmeteo(latitude: float, longitude: float,
+                                               date_debut: str, date_fin: str,
+                                               fuseau_horaire: str) -> pd.DataFrame:
     """
-    Récupère les données ERA5 quotidiennes sur une période donnée
-    et les formate comme des 'prévisions' (proxy historique).
+    Récupère les prévisions QUOTIDIENNES historiques d'Open-Meteo (même source que la prod),
+    sur la période donnée. On les traite comme des 'prévisions brutes' (tmax_prev, tmin_prev...).
 
     Args:
-        lat (float): latitude de la localisation
-        lon (float): longitude de la localisation
-        start_date (str): début de la période AAAA-MM-JJ
-        end_date (str): fin de la période AAAA-MM-JJ
-        timezone (str): timezone pour l'API
+        latitude (float): latitude de la localisation
+        longitude (float): longitude de la localisation
+        date_debut (str): début de la période AAAA-MM-JJ
+        date_fin (str): fin de la période AAAA-MM-JJ
+        fuseau_horaire (str): timezone pour l'API
 
     Returns:
-        pd.DataFrame: DataFrame contenant les colonnes 'tmax_prev', 'tmin_prev', 'prcp_prev', 'ws_prev'
+        pd.DataFrame: colonnes 'date', 'tmax_prev', 'tmin_prev', 'prcp_prev', 'ws_prev', 'source'
     """
     params = {
-        "latitude": lat,
-        "longitude": lon,
-        "start_date": start_date,
-        "end_date": end_date,
+        "latitude": latitude,
+        "longitude": longitude,
+        "start_date": date_debut,
+        "end_date": date_fin,
         "daily": ",".join([
             "temperature_2m_max",
             "temperature_2m_min",
             "precipitation_sum",
             "windspeed_10m_max"
         ]),
-        "timezone": timezone
+        "timezone": fuseau_horaire
     }
 
-    response = requests.get(ARCHIVE_URL, params=params, timeout=30)
-    response.raise_for_status()
-    data_json = response.json()
+    r = requests.get(URL_HISTORIQUE_PREVISIONS, params=params, timeout=30)
+    r.raise_for_status()
+    js = r.json()
 
-    # Conversion des dates en chaînes formatées AAAA-MM-JJ
-    dates = pd.to_datetime(data_json["daily"]["time"])
+    # Conversion des dates en AAAA-MM-JJ
+    dates = pd.to_datetime(js["daily"]["time"])
 
-    era_df = pd.DataFrame({
+    df_prev = pd.DataFrame({
         "date": dates.strftime("%Y-%m-%d"),
-        "tmax_prev": data_json["daily"]["temperature_2m_max"],
-        "tmin_prev": data_json["daily"]["temperature_2m_min"],
-        "prcp_prev": data_json["daily"]["precipitation_sum"],
-        "ws_prev":   data_json["daily"]["windspeed_10m_max"],
+        "tmax_prev": js["daily"]["temperature_2m_max"],
+        "tmin_prev": js["daily"]["temperature_2m_min"],
+        "prcp_prev": js["daily"]["precipitation_sum"],
+        "ws_prev":   js["daily"]["windspeed_10m_max"],
     })
 
-    era_df["source"] = "era5-archive"
-    return era_df
+    # Marqueur de source pour filtrer/diagnostiquer plus tard si besoin
+    df_prev["source"] = "open-meteo-historical"
+    return df_prev
 
 
-def fetch_observations_daily(lat: float, lon: float, start_date: str, end_date: str) -> pd.DataFrame:
+def recuperer_observations_meteostat(latitude: float, longitude: float,
+                                     date_debut: str, date_fin: str) -> pd.DataFrame:
     """
-    Récupère les observations météo quotidiennes (réelles)
-    depuis Meteostat pour une période donnée.
-
-    Args:
-        lat (float): latitude
-        lon (float): longitude
-        start_date (str): début AAAA-MM-JJ
-        end_date (str): fin AAAA-MM-JJ
+    Récupère les observations météo quotidiennes réelles depuis Meteostat
+    pour une période donnée.
 
     Returns:
-        pd.DataFrame: DataFrame contenant 'tmax_obs', 'tmin_obs', 'prcp_obs'
+        pd.DataFrame: colonnes 'date', 'tmax_obs', 'tmin_obs', 'prcp_obs'
     """
-    location = Point(lat, lon)
-    daily_data = Daily(location, pd.to_datetime(start_date), pd.to_datetime(end_date)).fetch()
+    loc = Point(latitude, longitude)
+    daily = Daily(loc, pd.to_datetime(date_debut), pd.to_datetime(date_fin)).fetch()
 
-    if daily_data.empty:
+    if daily.empty:
         raise RuntimeError(
-            "Meteostat a renvoyé 0 ligne. Vérifie la station, la période ou les coordonnées."
+            "Meteostat n'a renvoyé aucune donnée. Vérifie les coordonnées, la station ou la période."
         )
 
-    obs_df = pd.DataFrame({
-        "date": daily_data.index.date.astype(str),
-        "tmax_obs": daily_data["tmax"].values,
-        "tmin_obs": daily_data["tmin"].values,
-        "prcp_obs": daily_data["prcp"].fillna(0).values
+    df_obs = pd.DataFrame({
+        "date": daily.index.date.astype(str),
+        "tmax_obs": daily["tmax"].values,
+        "tmin_obs": daily["tmin"].values,
+        "prcp_obs": daily["prcp"].fillna(0).values
     })
 
-    return obs_df
+    return df_obs
 
 
 def main():
-    # On récupère 3 ans d'historique, jusqu'à aujourd'hui
-    end_date = str(date.today())
-    start_date = str(date.today().replace(year=date.today().year - 3))
+    # Période d'historique : 3 ans jusqu'à aujourd'hui
+    date_fin = str(date.today())
+    date_debut = str(date.today().replace(year=date.today().year - 3))
 
-    print(f"[seed] Téléchargement ERA5 {start_date} → {end_date} ...")
-    era_df = fetch_era5_daily(LAT, LON, start_date, end_date, TIMEZONE)
+    print(f"[seed] Téléchargement prévisions historiques Open-Meteo {date_debut} → {date_fin} ...")
+    df_prev = recuperer_previsions_historiques_openmeteo(LAT, LON, date_debut, date_fin, TIMEZONE)
 
-    print(f"[seed] Téléchargement observations Meteostat {start_date} → {end_date} ...")
-    obs_df = fetch_observations_daily(LAT, LON, start_date, end_date)
+    print(f"[seed] Téléchargement observations Meteostat {date_debut} → {date_fin} ...")
+    df_obs = recuperer_observations_meteostat(LAT, LON, date_debut, date_fin)
 
-    # Sauvegarde dans les fichiers CSV (remplace l'existant)
-    era_df.to_csv(FORECASTS_CSV, index=False)
-    obs_df.to_csv(OBS_CSV, index=False)
+    # Sauvegardes (remplacent l'existant)
+    df_prev.to_csv(FORECASTS_CSV, index=False)
+    df_obs.to_csv(OBS_CSV, index=False)
 
-    # Résumé rapide
-    print(f"[OK] forecasts.csv: {len(era_df)} lignes")
-    print(f"[OK] observations.csv: {len(obs_df)} lignes")
+    # Résumé
+    print(f"[OK] forecasts.csv : {len(df_prev)} lignes (source: open-meteo-historical)")
+    print(f"[OK] observations.csv : {len(df_obs)} lignes")
     print("[tip] Enchaîne avec : python src/train.py puis python src/predict.py")
 
 

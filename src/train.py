@@ -1,78 +1,120 @@
 import os
 import pandas as pd
 from joblib import dump
-from sklearn.linear_model import Ridge
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error
+from sklearn.inspection import permutation_importance
 
 from config import FORECASTS_CSV, OBS_CSV
 from features import prepare_merged
 
 
-def train_single_target(merged_df: pd.DataFrame, variable: str):
+def entrainer_modele_pour_variable(dataframe_fusionne: pd.DataFrame, variable_cible: str):
     """
-    Entraîne un modèle Ridge pour une variable donnée (tmax ou tmin),
-    en apprenant à prédire l'erreur entre la prévision et l'observation.
+    Entraîne un modèle de gradient boosting histogramme pour une variable cible donnée
+    (par exemple température maximale ou minimale), en apprenant à prédire l'erreur
+    entre la prévision brute et l'observation réelle.
 
     Args:
-        merged_df (pd.DataFrame): DataFrame fusionné contenant les prévisions,
-                                  les observations et les features saisonnières.
-        variable (str): "tmax" ou "tmin"
+        dataframe_fusionne (pd.DataFrame): tableau contenant les prévisions,
+                                        les observations et les variables explicatives.
+        variable_cible (str): "tmax" ou "tmin"
 
     Returns:
-        model (Ridge): modèle entraîné
-        mae_holdout (float|None): MAE sur les 15 derniers jours simulés (ou None si pas assez de données)
+        modele (HistGradientBoostingRegressor): modèle entraîné
+        erreur_holdout (float|None): erreur absolue moyenne sur les 15 derniers jours simulés
+                                     ou None s’il n’y a pas assez de données.
     """
-    error_col = f"err_{variable}"
+    colonne_erreur = f"err_{variable_cible}"
 
-    # Features utilisées pour prédire l'erreur
-    feature_cols = [f"{variable}_prev", "doy_sin", "doy_cos"]
-    X = merged_df[feature_cols]
-    y = merged_df[error_col]
+    # Sélection dynamique des colonnes explicatives (features)
+    colonnes_jour_semaine = [col for col in dataframe_fusionne.columns if col.startswith("dow_")]
+    colonnes_explicatives = [
+        f"{variable_cible}_prev",  # valeur prévue brute
+        "doy_sin", "doy_cos",      # saisonnalité
+        "prcp_prev", "ws_prev"     # pluie et vent
+    ] + colonnes_jour_semaine
 
-    # Entraînement principal
-    model = Ridge(alpha=1.0)
-    model.fit(X, y)
+    X = dataframe_fusionne[colonnes_explicatives]
+    y = dataframe_fusionne[colonne_erreur]
 
-    mae_holdout = None
-    if len(merged_df) > 30:
-        # Séparation temporelle: tout sauf les 15 derniers jours = train, les 15 derniers jours = test
-        train_df = merged_df.iloc[:-15]
-        test_df = merged_df.iloc[-15:]
+    # Entraînement du modèle principal
+    modele = HistGradientBoostingRegressor(
+        max_iter=300,
+        learning_rate=0.05,
+        max_depth=None,
+        random_state=42
+    )
+    modele.fit(X, y)
 
-        model_tmp = Ridge(alpha=1.0)
-        model_tmp.fit(train_df[feature_cols], train_df[error_col])
+    # Importance des variables (permutation)
+    resultat_importances = permutation_importance(
+        modele, X, y, n_repeats=10, random_state=42, n_jobs=-1
+    )
+    valeurs_importance = resultat_importances.importances_mean
+    indices_tries = valeurs_importance.argsort()[::-1]
 
-        # Prédiction de la température corrigée = prévision brute + correction prédite
-        y_pred_corrected = test_df[f"{variable}_prev"] + model_tmp.predict(test_df[feature_cols])
-        mae_holdout = mean_absolute_error(test_df[f"{variable}_obs"], y_pred_corrected)
+    print(f"\n[📈] Importance des variables (permutation) pour {variable_cible} :")
+    for indice in indices_tries:
+        print(f"  - {colonnes_explicatives[indice]} : {valeurs_importance[indice]:.4f}")
 
-    return model, mae_holdout
+    # Évaluation sur les 15 derniers jours (split temporel)
+    erreur_holdout = None
+    if len(dataframe_fusionne) > 30:
+        donnees_apprentissage = dataframe_fusionne.iloc[:-15]
+        donnees_test = dataframe_fusionne.iloc[-15:]
+
+        modele_temporaire = HistGradientBoostingRegressor(
+            max_iter=300,
+            learning_rate=0.05,
+            max_depth=None,
+            random_state=42
+        )
+        modele_temporaire.fit(
+            donnees_apprentissage[colonnes_explicatives],
+            donnees_apprentissage[colonne_erreur]
+        )
+
+        prediction_corrigee = (
+            donnees_test[f"{variable_cible}_prev"] +
+            modele_temporaire.predict(donnees_test[colonnes_explicatives])
+        )
+
+        erreur_holdout = mean_absolute_error(
+            donnees_test[f"{variable_cible}_obs"],
+            prediction_corrigee
+        )
+
+    return modele, erreur_holdout
 
 
 def main():
-    # Chargement des données prévisions / observations
-    forecasts_df = pd.read_csv(FORECASTS_CSV)
-    observations_df = pd.read_csv(OBS_CSV)
+    # Chargement des données de prévisions et d'observations
+    tableau_previsions = pd.read_csv(FORECASTS_CSV)
+    tableau_observations = pd.read_csv(OBS_CSV)
 
-    # Fusion + ajout des features saisonnières
-    merged_df = prepare_merged(forecasts_df, observations_df).sort_values("date")
+    # Fusion et enrichissement avec les variables explicatives
+    tableau_fusionne = prepare_merged(tableau_previsions, tableau_observations)
+    tableau_fusionne = tableau_fusionne.sort_values("date")
 
-    # Dossier de sauvegarde des modèles
+    # Création du dossier de sauvegarde des modèles
     os.makedirs("models", exist_ok=True)
 
-    # Entraînement pour tmax et tmin
-    tmax_model, tmax_mae = train_single_target(merged_df, "tmax")
-    tmin_model, tmin_mae = train_single_target(merged_df, "tmin")
+    # Entraînement pour la température maximale
+    modele_tmax, erreur_tmax = entrainer_modele_pour_variable(tableau_fusionne, "tmax")
+
+    # Entraînement pour la température minimale
+    modele_tmin, erreur_tmin = entrainer_modele_pour_variable(tableau_fusionne, "tmin")
 
     # Sauvegarde des modèles entraînés
-    dump(tmax_model, "models/ridge_tmax.joblib")
-    dump(tmin_model, "models/ridge_tmin.joblib")
+    dump(modele_tmax, "models/hgb_tmax.joblib")
+    dump(modele_tmin, "models/hgb_tmin.joblib")
 
-    print("[OK] Modèles enregistrés avec succès.")
-    if tmax_mae is not None:
-        print(f"MAE(tmax_corr) = {tmax_mae:.2f} °C sur les 15 derniers jours simulés.")
-    if tmin_mae is not None:
-        print(f"MAE(tmin_corr) = {tmin_mae:.2f} °C sur les 15 derniers jours simulés.")
+    print("\n[OK] Modèles HistGradientBoosting enregistrés avec succès.")
+    if erreur_tmax is not None:
+        print(f"Erreur MAE (tmax_corr) = {erreur_tmax:.2f} °C sur les 15 derniers jours simulés.")
+    if erreur_tmin is not None:
+        print(f"Erreur MAE (tmin_corr) = {erreur_tmin:.2f} °C sur les 15 derniers jours simulés.")
 
 
 if __name__ == "__main__":
