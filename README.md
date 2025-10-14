@@ -15,7 +15,7 @@ Le pipeline tourne chaque jour grâce à GitHub Actions et met à jour les donn�
 - 📈 Évaluation rapide sur les 15 derniers jours simulés  
 - 🔮 Prédiction corrigée publiée dans `last_prediction.json`  
 - ☁️ Automatisation complète via GitHub Actions (aucun PC à laisser allumé)  
-- ⚡ Seed initial avec 3 ans d’historique ERA5 + Meteostat pour commencer instantanément
+- ⚡ Seed initial avec 3 ans d’historique Meteostat pour commencer instantanément
 
 ---
 
@@ -31,7 +31,7 @@ bias-corrector-weather/
 │  └─ HGB_tmin.joblib     # modèle correction Tmin
 ├─ src/
 │  ├─ config.py             # coordonnées, timezone, chemins
-│  ├─ seed_history.py       # seed 3 ans d'historique ERA5 + Meteostat
+│  ├─ seed_history.py       # seed 3 ans d'historique Meteostat
 │  ├─ fetch_forecast.py     # prévision J+1 quotidienne
 │  ├─ fetch_obs.py          # observation J-1 quotidienne
 │  ├─ features.py           # génération des features saisonnières
@@ -78,7 +78,7 @@ python src/seed_history.py
 ```
 
 Ce script :
-- Télécharge 3 ans d’archives ERA5 (prévisions proxy)  
+- Télécharge 3 ans d’archives Meteostat (prévisions proxy)  
 - Télécharge 3 ans d’observations Meteostat  
 - Remplit `data/forecasts.csv` et `data/observations.csv`
 
@@ -135,7 +135,7 @@ python src/train.py
 ## 📊 Données stockées
 
 - **`data/forecasts.csv`**  
-  prévisions brutes quotidiennes (API Open-Meteo et ERA5 seed)
+  prévisions brutes quotidiennes (API Open-Meteo)
 
 - **`data/observations.csv`**  
   températures max/min et précipitations réelles (Meteostat)
@@ -163,7 +163,7 @@ facilement comparable aux prévisions brutes pour voir le gain.
 
 ## 🧪 Tech rapide
 
-- **Données** : Open-Meteo Forecast / ERA5 + Meteostat (lib Python officielle)  
+- **Données** : Open-Meteo Forecast / Meteostat (lib Python officielle)  
 - **Features** : saison encodée (`doy_sin`, `doy_cos`) + valeur prévue  
 - **Modèle** : HistGradientBoostingRegressor (scikit-learn)
 - **Automatisation** : GitHub Actions (2 crons UTC)  
