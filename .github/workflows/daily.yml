@@ -1,0 +1,56 @@
+name: Daily Weather Pipeline
+
+on:
+  schedule:
+    # GitHub tourne en UTC. 18:05 et 23:30 à Paris = 16:05 et 21:30 UTC.
+    - cron: "5 16 * * *"    # Soir: fetch forecast J+1
+    - cron: "30 21 * * *"   # Nuit: obs + train + predict
+  workflow_dispatch:        # Lancer à la main si tu veux
+
+permissions:
+  contents: write           # autoriser le push automatique
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ensure folders
+        run: mkdir -p data models logs
+
+      - name: Run pipeline
+        shell: bash
+        run: |
+          HOUR=$(date -u +%H)
+          if [ "$HOUR" -eq "16" ]; then
+            echo "[CI] Evening run → fetch forecast"
+            python src/fetch_forecast.py
+          else
+            echo "[CI] Night run → obs + train + predict"
+            python src/fetch_obs.py || true
+            python src/train.py
+            python src/predict.py | tee last_prediction.json
+          fi
+
+      - name: Commit & push updates
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/*.csv models/*.joblib last_prediction.json || true
+          git commit -m "CI: update data/models ($(date -u +%F %T) UTC)" || echo "Nothing to commit"
+          git push
