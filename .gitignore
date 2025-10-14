@@ -1,0 +1,12 @@
+# venv
+.venv/
+# cache/artefacts
+__pycache__/
+*.pyc
+logs/
+*.log
+# notebooks trash
+.ipynb_checkpoints/
+# OS files
+.DS_Store
+Thumbs.db
