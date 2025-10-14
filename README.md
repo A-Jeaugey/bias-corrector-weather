@@ -2,7 +2,7 @@
 
 ![Daily Weather Pipeline](https://github.com/A-Jeaugey/bias-corrector-weather/actions/workflows/daily.yml/badge.svg)
 
-Ce projet corrige automatiquement les **prévisions météo J+1** d’une API publique (Open-Meteo) pour une localisation donnée, en apprenant à partir des **erreurs passées** grâce à un petit modèle linéaire (Ridge).  
+Ce projet corrige automatiquement les **prévisions météo J+1** d’une API publique (Open-Meteo) pour une localisation donnée, en apprenant à partir des **erreurs passées** grâce à “HistGradientBoostingRegressor (sklearn)”.  
 Le pipeline tourne chaque jour grâce à GitHub Actions et met à jour les données et les modèles sans intervention manuelle.
 
 ---
@@ -11,7 +11,7 @@ Le pipeline tourne chaque jour grâce à GitHub Actions et met à jour les donn�
 
 - 📥 Téléchargement automatique des **prévisions J+1** chaque soir  
 - 🌡 Récupération automatique des **observations réelles** via Meteostat le lendemain  
-- 🧠 Réentraînement quotidien d’un **modèle Ridge** pour corriger le biais local  
+- 🧠 Réentraînement quotidien d’un **modèle HGB** pour corriger le biais local  
 - 📈 Évaluation rapide sur les 15 derniers jours simulés  
 - 🔮 Prédiction corrigée publiée dans `last_prediction.json`  
 - ☁️ Automatisation complète via GitHub Actions (aucun PC à laisser allumé)  
@@ -27,15 +27,15 @@ bias-corrector-weather/
 │  ├─ forecasts.csv         # prévisions brutes historiques et quotidiennes
 │  └─ observations.csv      # observations réelles
 ├─ models/
-│  ├─ ridge_tmax.joblib     # modèle correction Tmax
-│  └─ ridge_tmin.joblib     # modèle correction Tmin
+│  ├─ HGB_tmax.joblib     # modèle correction Tmax
+│  └─ HGB_tmin.joblib     # modèle correction Tmin
 ├─ src/
 │  ├─ config.py             # coordonnées, timezone, chemins
 │  ├─ seed_history.py       # seed 3 ans d'historique ERA5 + Meteostat
 │  ├─ fetch_forecast.py     # prévision J+1 quotidienne
 │  ├─ fetch_obs.py          # observation J-1 quotidienne
 │  ├─ features.py           # génération des features saisonnières
-│  ├─ train.py              # entraînement Ridge sur erreurs
+│  ├─ train.py              # entraînement HGB sur erreurs
 │  └─ predict.py            # prévision corrigée J+1
 ├─ .github/workflows/
 │  └─ daily.yml             # automatisation GitHub Actions (2 runs/jour)
@@ -87,7 +87,7 @@ Ce script :
 ## 🛠️ Entraînement + prédiction locale
 
 ```
-# Entraîne le modèle Ridge sur tout l'historique
+# Entraîne le modèle HGB sur tout l'historique
 python src/train.py
 
 # Prédit la prévision corrigée pour demain
@@ -141,7 +141,7 @@ python src/train.py
   températures max/min et précipitations réelles (Meteostat)
 
 - **`models/*.joblib`**  
-  modèles Ridge réentraînés quotidiennement
+  modèles HGB réentraînés quotidiennement
 
 - **`last_prediction.json`**  
   dernière prévision corrigée, générée chaque nuit par la CI
@@ -165,7 +165,7 @@ facilement comparable aux prévisions brutes pour voir le gain.
 
 - **Données** : Open-Meteo Forecast / ERA5 + Meteostat (lib Python officielle)  
 - **Features** : saison encodée (`doy_sin`, `doy_cos`) + valeur prévue  
-- **Modèle** : Ridge Regression (`scikit-learn`)  
+- **Modèle** : HistGradientBoostingRegressor (scikit-learn)
 - **Automatisation** : GitHub Actions (2 crons UTC)  
 - **Langage** : Python 3.11
 

@@ -1,8 +1,8 @@
-pandas
-numpy
-scikit-learn
-meteostat
-requests
-python-dateutil
-joblib
-matplotlib
+scikit-learn>=1.1
+pandas>=1.5
+numpy>=1.23
+meteostat>=1.6
+requests>=2.31
+python-dateutil>=2.8
+joblib>=1.2
+matplotlib>=3.6
