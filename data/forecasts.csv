@@ -1096,3 +1096,4 @@ date,tmax_prev,tmin_prev,prcp_prev,ws_prev,source
 2025-10-12,17.3,9.1,0.0,10.9,open-meteo-historical
 2025-10-13,17.1,8.3,0.0,11.3,open-meteo-historical
 2025-10-14,15.2,9.4,0.0,11.8,open-meteo-historical
+2025-10-16,16.0,8.3,0.0,12.0,open-meteo
