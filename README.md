@@ -215,3 +215,7 @@ Sources de données :
 
 👉 En résumé :  
 > Ce projet ne prédit pas la météo… il **corrige intelligemment** les prévisions existantes pour une ville, avec un pipeline 100 % automatisé 🌍⚡
+
+---
+### Apprentissage et Utilisation de l'IA
+Au-delà de l'objectif de modélisation météo, ce projet a également été un terrain d'expérimentation pour l'utilisation d'assistants IA. L'un de mes buts était d'apprendre à les intégrer dans un workflow de développement comme un outil de *pair programming* : pour générer du code de base, déboguer, ou encore pour rédiger la documentation. Je suis cependant resté le pilote du projet, en charge de la logique, de l'architecture et des décisions finales.
