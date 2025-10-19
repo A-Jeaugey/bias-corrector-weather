@@ -2,21 +2,22 @@ name: Daily Weather Pipeline
 
 on:
   schedule:
-    # GitHub tourne en UTC. 18:05 et 23:30 à Paris = 16:05 et 21:30 UTC.
-    - cron: "5 16 * * *"    # Soir: fetch forecast J+1
-    - cron: "30 21 * * *"   # Nuit: obs + train + predict
-  workflow_dispatch:        # Lancer à la main si tu veux
+    # Rappel : GitHub tourne en UTC. 18:05 et 23:30 à Paris ≈ 16:05 et 21:30 UTC.
+    - cron: "5 16 * * *"   # Soir: fetch forecast J+1
+    - cron: "30 21 * * *"  # Nuit: obs + train + predict + plots
+  workflow_dispatch:       # Permet de lancer manuellement
 
 permissions:
-  contents: write           # autoriser le push automatique
+  contents: write          # Indispensable pour autoriser le push automatique
 
 jobs:
-  run:
+  daily-pipeline:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+        # On garde tes credentials pour que le push fonctionne
         with:
           persist-credentials: true
 
@@ -24,33 +25,42 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: 'pip' # Accélère l'installation des dépendances
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Ensure folders
-        run: mkdir -p data models logs
+      - name: SOIR Fetch daily forecast (J+1)
+        if: github.event.schedule == '5 16 * * *'
+        run: python src/fetch_forecast.py
 
-      - name: Run pipeline
-        shell: bash
+      - name: NUIT Fetch observations, train, predict
+        # Cette étape ne tourne que pour le cron de la nuit ou si lancée manuellement
+        if: github.event.schedule == '30 21 * * *' || github.event_name == 'workflow_dispatch'
         run: |
-          HOUR=$(date -u +%H)
-          if [ "$HOUR" -eq "16" ]; then
-            echo "[CI] Evening run → fetch forecast"
-            python src/fetch_forecast.py
-          else
-            echo "[CI] Night run → obs + train + predict"
-            python src/fetch_obs.py || true
-            python src/train.py
-            python src/predict.py | tee last_prediction.json
-          fi
+          python src/fetch_obs.py
+          python src/train.py
+          python src/predict.py
 
-      - name: Commit & push updates
+      - name: NUIT Generate plots
+        # On génère les graphiques juste après la prédiction
+        if: github.event.schedule == '30 21 * * *' || github.event_name == 'workflow_dispatch'
+        run: python src/plots.py
+        
+      - name: Commit and push updates
+        # Cette étape tourne à chaque fois, mais ne fera un commit que si des fichiers ont changé
         run: |
-          git config user.name  "github-actions[bot]"
+          # On garde ta configuration de git, elle est parfaite
+          git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/*.csv models/*.joblib last_prediction.json || true
-          git commit -m "CI: update data/models ($(date -u +%F %T) UTC)" || echo "Nothing to commit"
-          git push
+          
+          # On ajoute tous les fichiers susceptibles de changer, y compris les nouveaux graphiques
+          git add data/*.csv models/*.joblib last_prediction.json plots/*.png
+          
+          # On utilise une condition bash pour ne commiter que s'il y a des changements
+          if ! git diff --staged --quiet; then
+            git commit -m "📈 Daily update: $(date -u +%F)"
+            git push
+          else
+            echo "No changes to commit."
+          fi

@@ -6,6 +6,30 @@ Ce projet corrige automatiquement les **prévisions météo J+1** d’une API pu
 Le pipeline tourne chaque jour grâce à GitHub Actions et met à jour les données et les modèles sans intervention manuelle.
 
 ---
+## 📊 Résultats Visuels
+
+Voici la performance du modèle, mise à jour quotidiennement.
+
+### Amélioration de la Précision (MAE)
+
+Le graphique ci-dessous montre l'erreur absolue moyenne (MAE) sur une fenêtre glissante de 30 jours. On voit clairement que l'erreur du modèle corrigé (en bleu) est systématiquement plus basse que celle de la prévision brute (en rouge).
+
+**Température Maximale**
+![Comparaison MAE TMAX](plots/mae_comparison_tmax.png)
+
+**Température Minimale**
+![Comparaison MAE TMIN](plots/mae_comparison_tmin.png)
+
+### Comparaison sur les 30 Derniers Jours
+
+Ce graphique montre la performance du modèle au jour le jour sur la période récente.
+
+**Température Maximale**
+![Comparaison Températures TMAX](plots/temperature_comparison_tmax.png)
+
+**Température Minimale**
+![Comparaison Températures TMIN](plots/temperature_comparison_tmin.png)
+---
 
 ## ✨ Fonctionnalités
 
