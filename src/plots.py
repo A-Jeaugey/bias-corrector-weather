@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 # Chemins vers les fichiers de données et le dossier de sortie
-FORECASTS_CSV = Path("data/forecasts.csv") # <- On utilise maintenant le fichier d'historique des prévisions
+FORECASTS_CSV = Path("data/forecasts.csv")
 PREDICTIONS_CSV = Path("data/predictions.csv")
 OBSERVATIONS_CSV = Path("data/observations.csv")
 PLOTS_DIR = Path("plots")
@@ -20,7 +20,6 @@ def plot_mae_comparison(data: pd.DataFrame, window_size: int = 30):
     
     for var in ["tmax", "tmin"]:
         data[f"err_brute_{var}"] = (data[f"{var}_obs"] - data[f"{var}_prev"]).abs()
-        # La ligne ci-dessous créera des NaN si la prédiction corrigée n'existe pas, c'est normal
         data[f"err_corr_{var}"] = (data[f"{var}_obs"] - data[f"{var}_corr"]).abs()
 
         data[f"mae_brute_{var}"] = data[f"err_brute_{var}"].rolling(window=window_size, min_periods=1).mean()
@@ -87,7 +86,6 @@ def main():
         predictions = pd.read_csv(PREDICTIONS_CSV)
     except FileNotFoundError as e:
         print(f"❌ [ERREUR] Fichier de données manquant : {e}.")
-        print("💡 Assure-toi que `data/forecasts.csv`, `observations.csv` et `predictions.csv` existent.")
         return
 
     # --- NOUVELLE LOGIQUE DE FUSION ---
