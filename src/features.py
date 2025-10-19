@@ -1,18 +1,28 @@
 import pandas as pd
 import numpy as np
 
+
 def ajouter_variables_calendrier(tableau: pd.DataFrame) -> pd.DataFrame:
     """
     Ajoute les variables de calendrier nécessaires au modèle :
-      - doy_sin, doy_cos : encodage saisonnier (jour de l'année en sinus/cosinus)
+      - doy_sin, doy_cos : encodage saisonnier (jour de l'année en sinus/cosinus),
+                           avec prise en compte des années bissextiles (365/366 jours)
       - dow_*            : jour de la semaine en one-hot (0 = lundi ... 6 = dimanche, baseline dow_0 supprimée)
     """
     dates = pd.to_datetime(tableau["date"])
-    jour_annee = dates.dt.dayofyear
 
-    # Saisonnalité (position sur le cycle annuel)
-    tableau["doy_sin"] = np.sin(2 * np.pi * jour_annee / 365)
-    tableau["doy_cos"] = np.cos(2 * np.pi * jour_annee / 365)
+    # Années bissextiles: divisible par 4, sauf si divisible par 100, sauf si divisible par 400
+    annees = dates.dt.year
+    est_bissextile = (annees % 4 == 0) & ((annees % 100 != 0) | (annees % 400 == 0))
+    total_jours = np.where(est_bissextile, 366, 365)
+
+    # Jour de l'année (1..365/366). On retire 1 pour aligner 1er janv sur angle 0.
+    jour_annee = dates.dt.dayofyear
+    angles = 2 * np.pi * (jour_annee - 1) / total_jours
+
+    # Saisonnalité (position sur le cycle annuel) avec bissextile
+    tableau["doy_sin"] = np.sin(angles)
+    tableau["doy_cos"] = np.cos(angles)
 
     # Jour de la semaine encodé en one-hot
     tableau["dow"] = dates.dt.weekday  # 0 = lundi ... 6 = dimanche
