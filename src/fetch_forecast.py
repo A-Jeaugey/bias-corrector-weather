@@ -43,7 +43,10 @@ def main():
             "temperature_2m_max",
             "temperature_2m_min",
             "precipitation_sum",
-            "windspeed_10m_max"
+            "windspeed_10m_max",
+            "shortwave_radiation_sum", # Ajout
+            "sunshine_duration",       # Ajout
+            "cloud_cover_mean"         # Ajout (nébulosité moyenne)
         ]),
         "timezone": TIMEZONE
     }
@@ -70,6 +73,11 @@ def main():
         "tmin_prev": float(donnees_quotidiennes["temperature_2m_min"][indice]),
         "prcp_prev": float(donnees_quotidiennes.get("precipitation_sum", [None])[indice]),
         "ws_prev":   float(donnees_quotidiennes.get("windspeed_10m_max", [None])[indice]),
+        # --- Nouveaux ajouts ---
+        "rad_prev":  float(donnees_quotidiennes.get("shortwave_radiation_sum", [None])[indice]),
+        "sun_prev":  float(donnees_quotidiennes.get("sunshine_duration", [None])[indice]),
+        "cloud_prev":float(donnees_quotidiennes.get("cloud_cover_mean", [None])[indice]),
+        # --- Fin ajouts ---
         "source": "open-meteo"
     }
 

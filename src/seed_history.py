@@ -10,8 +10,8 @@ URL_HISTORIQUE_PREVISIONS = "https://historical-forecast-api.open-meteo.com/v1/f
 
 
 def recuperer_previsions_historiques_openmeteo(latitude: float, longitude: float,
-                                               date_debut: str, date_fin: str,
-                                               fuseau_horaire: str) -> pd.DataFrame:
+                                              date_debut: str, date_fin: str,
+                                              fuseau_horaire: str) -> pd.DataFrame:
     """
     Récupère les prévisions QUOTIDIENNES historiques d'Open-Meteo (même source que la prod),
     sur la période donnée. On les traite comme des 'prévisions brutes' (tmax_prev, tmin_prev...).
@@ -35,7 +35,10 @@ def recuperer_previsions_historiques_openmeteo(latitude: float, longitude: float
             "temperature_2m_max",
             "temperature_2m_min",
             "precipitation_sum",
-            "windspeed_10m_max"
+            "windspeed_10m_max",
+            "shortwave_radiation_sum", # Ajout
+            "sunshine_duration",       # Ajout
+            "cloud_cover_mean"         # Ajout
         ]),
         "timezone": fuseau_horaire
     }
@@ -53,6 +56,11 @@ def recuperer_previsions_historiques_openmeteo(latitude: float, longitude: float
         "tmin_prev": js["daily"]["temperature_2m_min"],
         "prcp_prev": js["daily"]["precipitation_sum"],
         "ws_prev":   js["daily"]["windspeed_10m_max"],
+        # --- Nouveaux ajouts ---
+        "rad_prev":  js["daily"]["shortwave_radiation_sum"],
+        "sun_prev":  js["daily"]["sunshine_duration"],
+        "cloud_prev":js["daily"]["cloud_cover_mean"],
+        # --- Fin ajouts ---
     })
 
     # Marqueur de source pour filtrer/diagnostiquer plus tard si besoin
@@ -105,7 +113,6 @@ def main():
     # Résumé
     print(f"[OK] forecasts.csv : {len(df_prev)} lignes (source: open-meteo-historical)")
     print(f"[OK] observations.csv : {len(df_obs)} lignes")
-    print("[tip] Enchaîne avec : python src/train.py puis python src/predict.py")
 
 
 if __name__ == "__main__":
