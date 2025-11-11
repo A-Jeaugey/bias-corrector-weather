@@ -1119,3 +1119,4 @@ date,tmax_prev,tmin_prev,prcp_prev,ws_prev,rad_prev,sun_prev,cloud_prev,source
 2025-11-09,12.8,5.0,1.6,10.0,6.61,27898.46,64.0,open-meteo
 2025-11-10,8.1,4.4,0.0,9.8,2.36,0.0,92.0,open-meteo
 2025-11-11,14.7,5.4,0.0,8.3,8.3,30194.91,41.0,open-meteo
+2025-11-12,17.9,6.2,0.0,15.1,7.96,29499.88,48.0,open-meteo
