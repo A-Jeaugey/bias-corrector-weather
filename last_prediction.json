@@ -1,9 +1,9 @@
 {
-  "date": "2025-11-18",
-  "tmax_prev": 7.0,
-  "tmax_corr": 3.8,
-  "tmin_prev": 0.6,
-  "tmin_corr": -0.6,
+  "date": "2025-11-20",
+  "tmax_prev": 4.2,
+  "tmax_corr": 3.2,
+  "tmin_prev": 1.0,
+  "tmin_corr": -0.1,
   "modeles_utilises": {
     "tmax": "hgb_tmax.joblib",
     "tmin": "hgb_tmin.joblib"
