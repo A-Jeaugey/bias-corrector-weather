@@ -1190,3 +1190,4 @@ date,tmax_prev,tmin_prev,prcp_prev,ws_prev,rad_prev,sun_prev,cloud_prev,source
 2026-01-19,8.7,2.3,0.0,3.6,6.35,28017.03,64.0,open-meteo
 2026-01-20,2.2,-0.9,0.0,5.2,2.37,0.0,100.0,open-meteo
 2026-01-21,6.8,0.1,0.0,7.9,4.97,18608.22,63.0,open-meteo
+2026-01-22,7.6,2.8,0.0,10.8,2.95,4430.1,96.0,open-meteo
