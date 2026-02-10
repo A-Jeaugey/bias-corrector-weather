@@ -1209,3 +1209,4 @@ date,tmax_prev,tmin_prev,prcp_prev,ws_prev,rad_prev,sun_prev,cloud_prev,source
 2026-02-07,10.9,2.6,0.0,5.4,7.88,28421.82,87.0,open-meteo
 2026-02-08,9.5,1.2,0.0,7.1,8.43,25338.32,56.0,open-meteo
 2026-02-09,5.7,2.0,0.0,8.4,4.01,1604.43,91.0,open-meteo
+2026-02-11,12.8,9.0,9.1,24.3,3.99,12409.11,98.0,open-meteo
