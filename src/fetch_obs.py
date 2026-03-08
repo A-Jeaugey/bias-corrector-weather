@@ -1,14 +1,17 @@
 import pandas as pd
-from meteostat import Point, Daily
+import requests
 from datetime import datetime, timedelta
 from dateutil import tz
 from config import LAT, LON, TIMEZONE, OBS_CSV
 
+# URL de l'API Open-Meteo pour les observations historiques réelles
+URL_OBSERVATIONS = "https://archive-api.open-meteo.com/v1/archive"
+
 
 def main():
     """
-    Récupère les observations réelles d’hier (J-1) via Meteostat et les stocke dans OBS_CSV.
-    - Remplace la ligne d’hier si elle existe déjà.
+    Récupère les observations réelles d'hier (J-1) via Open-Meteo Archive et les stocke dans OBS_CSV.
+    - Remplace la ligne d'hier si elle existe déjà.
     - Crée le fichier si besoin.
     Colonnes : date, tmax_obs, tmin_obs, prcp_obs
     """
@@ -16,28 +19,35 @@ def main():
     date_aujourdhui = datetime.now(tz.gettz(TIMEZONE)).date()
     date_hier = date_aujourdhui - timedelta(days=1)
 
-    # Meteostat veut des datetime (pas des date)
-    dt_debut = datetime(date_hier.year, date_hier.month, date_hier.day)
-    dt_fin = dt_debut  # même jour
+    # Paramètres de requête à l'API Open-Meteo Archive
+    parametres = {
+        "latitude": LAT,
+        "longitude": LON,
+        "start_date": str(date_hier),
+        "end_date": str(date_hier),
+        "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum",
+        "timezone": TIMEZONE,
+    }
 
-    # Récupération des observations
-    localisation = Point(LAT, LON)
-    donnees_journalieres = Daily(localisation, dt_debut, dt_fin).fetch()
+    reponse = requests.get(URL_OBSERVATIONS, params=parametres, timeout=20)
+    reponse.raise_for_status()
+    donnees_json = reponse.json()
+    donnees_quotidiennes = donnees_json.get("daily", {})
 
-    if donnees_journalieres.empty:
+    if not donnees_quotidiennes or not donnees_quotidiennes.get("time"):
         print("[AVERTISSEMENT] Aucune observation disponible pour hier.")
         return
 
-    # Normalisation des colonnes et gestion des NaN
-    tmax = donnees_journalieres["tmax"].iloc[0]
-    tmin = donnees_journalieres["tmin"].iloc[0]
-    prcp = donnees_journalieres["prcp"].iloc[0]
+    # Extraction des valeurs
+    tmax = donnees_quotidiennes["temperature_2m_max"][0]
+    tmin = donnees_quotidiennes["temperature_2m_min"][0]
+    prcp = donnees_quotidiennes["precipitation_sum"][0]
 
     ligne = {
         "date": str(date_hier),
-        "tmax_obs": float(tmax) if pd.notna(tmax) else None,
-        "tmin_obs": float(tmin) if pd.notna(tmin) else None,
-        "prcp_obs": float(prcp) if pd.notna(prcp) else 0.0,
+        "tmax_obs": float(tmax) if tmax is not None else None,
+        "tmin_obs": float(tmin) if tmin is not None else None,
+        "prcp_obs": float(prcp) if prcp is not None else 0.0,
     }
 
     nouveau = pd.DataFrame([ligne])
