@@ -1280,3 +1280,4 @@ date,tmax_prev,tmin_prev,prcp_prev,ws_prev,rad_prev,sun_prev,cloud_prev,source
 2026-04-20,17.5,8.7,0.0,11.6,22.7,46800.0,60.0,open-meteo
 2026-04-21,17.8,7.0,0.0,17.8,25.18,47158.52,25.0,open-meteo
 2026-04-22,18.7,6.1,0.0,20.3,25.7,47384.61,0.0,open-meteo
+2026-04-23,21.5,7.6,0.0,13.6,25.98,47523.68,0.0,open-meteo
