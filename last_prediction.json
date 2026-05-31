@@ -1,9 +1,9 @@
 {
-  "date": "2026-05-31",
-  "tmax_prev": 26.4,
-  "tmax_corr": 25.1,
-  "tmin_prev": 18.9,
-  "tmin_corr": 18.8,
+  "date": "2026-06-01",
+  "tmax_prev": 26.5,
+  "tmax_corr": 25.0,
+  "tmin_prev": 14.4,
+  "tmin_corr": 14.2,
   "modeles_utilises": {
     "tmax": "hgb_tmax.joblib",
     "tmin": "hgb_tmin.joblib"
